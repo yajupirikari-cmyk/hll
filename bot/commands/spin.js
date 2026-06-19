@@ -97,12 +97,23 @@ module.exports = {
     }
 
     // 6. 当落判定
-    let stockQuery = { productId: product._id, isUsed: false };
-    if (product.expiresInHours) {
-      const expirationDate = new Date(Date.now() - product.expiresInHours * 60 * 60 * 1000);
-      stockQuery.createdAt = { $gt: expirationDate };
-    }
-    const availableStockCount = await Stock.countDocuments(stockQuery);
+    const validStockQuery = {
+      productId: product._id,
+      isUsed: false,
+      $or: [
+        { expiresInHours: null },
+        { expiresInHours: { $exists: false } },
+        {
+          $expr: {
+            $gt: [
+              { $add: ["$createdAt", { $multiply: ["$expiresInHours", 60 * 60 * 1000] }] },
+              new Date()
+            ]
+          }
+        }
+      ]
+    };
+    const availableStockCount = await Stock.countDocuments(validStockQuery);
     
     let isWin = false;
     if (availableStockCount > 0) {
@@ -123,7 +134,7 @@ module.exports = {
     // 7. 当選時の処理
     // アトミックに1件取得して使用済みに更新 (期限内の条件を適用)
     const tokenDoc = await Stock.findOneAndUpdate(
-      stockQuery,
+      validStockQuery,
       { $set: { isUsed: true, usedBy: userId, usedAt: now } },
       { new: true }
     );
@@ -137,8 +148,8 @@ module.exports = {
 
     // 残り時間の計算
     let timeLimitMsg = '';
-    if (product.expiresInHours) {
-      const expiresAt = new Date(tokenDoc.createdAt.getTime() + product.expiresInHours * 60 * 60 * 1000);
+    if (tokenDoc.expiresInHours) {
+      const expiresAt = new Date(tokenDoc.createdAt.getTime() + tokenDoc.expiresInHours * 60 * 60 * 1000);
       const remainingMs = expiresAt - now;
       if (remainingMs > 0) {
         const remainingHours = Math.floor(remainingMs / (1000 * 60 * 60));

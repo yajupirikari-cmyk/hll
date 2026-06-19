@@ -21,6 +21,10 @@ const stockSchema = new mongoose.Schema({
     default: false,
     index: true
   },
+  expiresInHours: {
+    type: Number,
+    default: null
+  },
   usedBy: {
     type: String,
     default: null

@@ -21,6 +21,10 @@
           <p class="text-muted">1行につき1つのトークン(コード)を入力してください。重複するトークンは無視されます。</p>
           <form action="/products/<%= product._id %>/tokens" method="POST">
             <textarea name="tokens" class="form-control mb-10" rows="5" placeholder="Token1&#10;Token2&#10;Token3" required></textarea>
+            <div class="form-group mb-10" style="max-width: 300px;">
+              <label>有効期限（時間・任意）</label>
+              <input type="number" name="expiresInHours" class="form-control" placeholder="例: 24 (未入力で無期限)" min="1" step="1">
+            </div>
             <button type="submit" class="btn btn-primary">一括登録</button>
           </form>
         </div>
@@ -30,6 +34,7 @@
             <thead>
               <tr>
                 <th>内容</th>
+                <th>有効期限</th>
                 <th>状態</th>
                 <th>使用ユーザー</th>
                 <th>使用日時</th>
@@ -40,6 +45,7 @@
               <% stocks.forEach(stock => { %>
                 <tr>
                   <td class="font-mono"><%= stock.content %></td>
+                  <td><%= stock.expiresInHours ? stock.expiresInHours + '時間' : '無期限' %></td>
                   <td>
                     <% if(stock.isUsed) { %>
                       <span class="badge badge-danger">使用済み</span>
@@ -58,7 +64,7 @@
               <% }) %>
               <% if(stocks.length === 0) { %>
                 <tr>
-                  <td colspan="5" class="text-center">トークンがありません</td>
+                  <td colspan="6" class="text-center">トークンがありません</td>
                 </tr>
               <% } %>
             </tbody>

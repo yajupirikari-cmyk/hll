@@ -22,16 +22,23 @@ router.get('/', async (req, res) => {
   const productsCount = await Product.countDocuments({ serverId });
   
   // 有効な総在庫数の計算
-  const products = await Product.find({ serverId });
-  let stockCount = 0;
-  for (const p of products) {
-    let stockQuery = { productId: p._id, isUsed: false };
-    if (p.expiresInHours) {
-      const expirationDate = new Date(Date.now() - p.expiresInHours * 60 * 60 * 1000);
-      stockQuery.createdAt = { $gt: expirationDate };
-    }
-    stockCount += await Stock.countDocuments(stockQuery);
-  }
+  const validStockQuery = {
+    serverId: serverId,
+    isUsed: false,
+    $or: [
+      { expiresInHours: null },
+      { expiresInHours: { $exists: false } },
+      {
+        $expr: {
+          $gt: [
+            { $add: ["$createdAt", { $multiply: ["$expiresInHours", 60 * 60 * 1000] }] },
+            new Date()
+          ]
+        }
+      }
+    ]
+  };
+  const stockCount = await Stock.countDocuments(validStockQuery);
   
   const historyCount = await WinHistory.countDocuments({ serverId });
   
@@ -49,14 +56,23 @@ router.get('/products', async (req, res) => {
   
   // 各商品の残り在庫数を取得
   const productsWithStock = await Promise.all(products.map(async p => {
-    let stockQuery = { productId: p._id, isUsed: false };
-    
-    if (p.expiresInHours) {
-      const expirationDate = new Date(Date.now() - p.expiresInHours * 60 * 60 * 1000);
-      stockQuery.createdAt = { $gt: expirationDate };
-    }
-
-    const stockCount = await Stock.countDocuments(stockQuery);
+    const validStockQuery = {
+      productId: p._id,
+      isUsed: false,
+      $or: [
+        { expiresInHours: null },
+        { expiresInHours: { $exists: false } },
+        {
+          $expr: {
+            $gt: [
+              { $add: ["$createdAt", { $multiply: ["$expiresInHours", 60 * 60 * 1000] }] },
+              new Date()
+            ]
+          }
+        }
+      ]
+    };
+    const stockCount = await Stock.countDocuments(validStockQuery);
     return { ...p.toObject(), stockCount };
   }));
 
@@ -65,15 +81,10 @@ router.get('/products', async (req, res) => {
 
 router.post('/products', async (req, res) => {
   try {
-    const { name, expiresInHours } = req.body;
+    const { name } = req.body;
     if (!name || name.trim() === '') return res.status(400).send('商品名は必須です');
 
-    const productData = { serverId, name: name.trim() };
-    if (expiresInHours && !isNaN(parseInt(expiresInHours))) {
-      productData.expiresInHours = parseInt(expiresInHours);
-    }
-
-    await Product.create(productData);
+    await Product.create({ serverId, name: name.trim() });
     res.redirect('/products');
   } catch (error) {
     if (error.code === 11000) {
@@ -116,29 +127,24 @@ router.get('/products/:id', async (req, res) => {
 // トークン一括登録
 router.post('/products/:id/tokens', async (req, res) => {
   try {
-    const product = await Product.findOne({ _id: req.params.id, serverId });
-    if (!product) return res.status(404).send('商品が見つかりません');
+    const { tokens, expiresInHours } = req.body;
+    if (!tokens || tokens.trim() === '') return res.redirect(`/products/${req.params.id}`);
 
-    const tokensText = req.body.tokens;
-    if (!tokensText) return res.redirect(`/products/${product._id}`);
-
-    const tokens = tokensText.split(/\r?\n/).map(t => t.trim()).filter(t => t !== '');
+    const tokenArray = tokens.split('\n').map(t => t.trim()).filter(t => t !== '');
     
-    // 一括登録(重複エラーを無視して挿入)
-    const stockDocs = tokens.map(token => ({
-      serverId,
-      productId: product._id,
-      content: token
-    }));
+    const parsedHours = (expiresInHours && !isNaN(parseInt(expiresInHours))) ? parseInt(expiresInHours) : null;
 
-    try {
-      await Stock.insertMany(stockDocs, { ordered: false });
-    } catch (insertError) {
-      // ordered: falseの場合、重複エラーがあっても他のドキュメントは挿入される
-      console.warn('Some tokens were ignored due to duplicates.');
+    // 重複を排除して保存
+    let addedCount = 0;
+    for (const content of tokenArray) {
+      const exists = await Stock.findOne({ productId: req.params.id, content });
+      if (!exists) {
+        await Stock.create({ serverId, productId: req.params.id, content, expiresInHours: parsedHours });
+        addedCount++;
+      }
     }
 
-    res.redirect(`/products/${product._id}`);
+    res.redirect(`/products/${req.params.id}`);
   } catch (error) {
     console.error(error);
     res.status(500).send('エラーが発生しました');

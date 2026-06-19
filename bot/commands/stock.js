@@ -25,12 +25,23 @@ module.exports = {
       }
 
       for (const product of products) {
-        let stockQuery = { productId: product._id, isUsed: false };
-        if (product.expiresInHours) {
-          const expirationDate = new Date(Date.now() - product.expiresInHours * 60 * 60 * 1000);
-          stockQuery.createdAt = { $gt: expirationDate };
-        }
-        const stockCount = await Stock.countDocuments(stockQuery);
+        const validStockQuery = {
+          productId: product._id,
+          isUsed: false,
+          $or: [
+            { expiresInHours: null },
+            { expiresInHours: { $exists: false } },
+            {
+              $expr: {
+                $gt: [
+                  { $add: ["$createdAt", { $multiply: ["$expiresInHours", 60 * 60 * 1000] }] },
+                  new Date()
+                ]
+              }
+            }
+          ]
+        };
+        const stockCount = await Stock.countDocuments(validStockQuery);
         // 絵文字は使用しない
         embed.addFields({ name: product.name, value: `残り: ${stockCount}件`, inline: true });
       }

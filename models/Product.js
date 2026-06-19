@@ -10,10 +10,6 @@ const productSchema = new mongoose.Schema({
     type: String,
     required: true
   },
-  expiresInHours: {
-    type: Number,
-    default: null
-  },
   createdAt: {
     type: Date,
     default: Date.now
