@@ -39,6 +39,27 @@ for (const file of commandFiles) {
 client.once('ready', async () => {
   await connectDB();
   console.log(`Logged in as ${client.user.tag}!`);
+
+  // 自動でスラッシュコマンドを登録する
+  try {
+    const { REST, Routes } = require('discord.js');
+    const commandsArray = [];
+    client.commands.forEach(cmd => {
+      if (cmd.data) commandsArray.push(cmd.data.toJSON());
+    });
+
+    if (commandsArray.length > 0) {
+      const rest = new REST().setToken(process.env.DISCORD_BOT_TOKEN);
+      console.log('Started refreshing application (/) commands automatically.');
+      await rest.put(
+        Routes.applicationGuildCommands(process.env.DISCORD_CLIENT_ID, process.env.TARGET_SERVER_ID),
+        { body: commandsArray },
+      );
+      console.log('Successfully reloaded application (/) commands automatically.');
+    }
+  } catch (error) {
+    console.error('Failed to register commands automatically:', error);
+  }
 });
 
 client.on('interactionCreate', async interaction => {
