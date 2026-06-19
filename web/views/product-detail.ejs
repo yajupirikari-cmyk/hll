@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>Product Details - <%= product.name %></title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="app-container">
+    <%- include('partials/sidebar') %>
+    
+    <main class="main-content">
+      <header class="topbar">
+        <h2><%= product.name %> - Tokens</h2>
+        <a href="/products" class="btn btn-sm btn-secondary">戻る</a>
+      </header>
+
+      <div class="content-body">
+        <div class="card mb-20">
+          <h3>トークン一括登録</h3>
+          <p class="text-muted">1行につき1つのトークン(コード)を入力してください。重複するトークンは無視されます。</p>
+          <form action="/products/<%= product._id %>/tokens" method="POST">
+            <textarea name="tokens" class="form-control mb-10" rows="5" placeholder="Token1&#10;Token2&#10;Token3" required></textarea>
+            <button type="submit" class="btn btn-primary">一括登録</button>
+          </form>
+        </div>
+
+        <div class="card">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>内容</th>
+                <th>状態</th>
+                <th>使用ユーザー</th>
+                <th>使用日時</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% stocks.forEach(stock => { %>
+                <tr>
+                  <td class="font-mono"><%= stock.content %></td>
+                  <td>
+                    <% if(stock.isUsed) { %>
+                      <span class="badge badge-danger">使用済み</span>
+                    <% } else { %>
+                      <span class="badge badge-success">未使用</span>
+                    <% } %>
+                  </td>
+                  <td><%= stock.usedBy ? stock.usedBy : '-' %></td>
+                  <td><%= stock.usedAt ? new Date(stock.usedAt).toLocaleString('ja-JP') : '-' %></td>
+                  <td>
+                    <form action="/products/<%= product._id %>/tokens/<%= stock._id %>/delete" method="POST" onsubmit="return confirm('このトークンを削除しますか？');">
+                      <button type="submit" class="btn btn-sm btn-danger">削除</button>
+                    </form>
+                  </td>
+                </tr>
+              <% }) %>
+              <% if(stocks.length === 0) { %>
+                <tr>
+                  <td colspan="5" class="text-center">トークンがありません</td>
+                </tr>
+              <% } %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+  <script src="https://unpkg.com/feather-icons"></script>
+  <script>feather.replace();</script>
+</body>
+</html>

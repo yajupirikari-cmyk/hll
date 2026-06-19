@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div class="app-container">
+    <%- include('partials/sidebar') %>
+    
+    <main class="main-content">
+      <header class="topbar">
+        <h2>Dashboard</h2>
+        <div class="user-profile">
+          <img src="https://cdn.discordapp.com/avatars/<%= user.id %>/<%= user.avatar %>.png" alt="Avatar" class="avatar">
+          <span><%= user.username %></span>
+        </div>
+      </header>
+
+      <div class="content-body">
+        <div class="stats-grid">
+          <div class="stat-card">
+            <h3 class="stat-title">登録商品数</h3>
+            <p class="stat-value"><%= productsCount %></p>
+          </div>
+          <div class="stat-card">
+            <h3 class="stat-title">総在庫数</h3>
+            <p class="stat-value"><%= stockCount %></p>
+          </div>
+          <div class="stat-card">
+            <h3 class="stat-title">総当選数</h3>
+            <p class="stat-value"><%= historyCount %></p>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+  <script src="https://unpkg.com/feather-icons"></script>
+  <script>
+    feather.replace();
+  </script>
+</body>
+</html>

@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>History</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="app-container">
+    <%- include('partials/sidebar') %>
+    
+    <main class="main-content">
+      <header class="topbar">
+        <h2>Win History</h2>
+      </header>
+
+      <div class="content-body">
+        <div class="card mb-20">
+          <form action="/history" method="GET" class="form-inline">
+            <input type="text" name="search" class="form-control" placeholder="ユーザー名 or ID" value="<%= query.search || '' %>">
+            <select name="product" class="form-control">
+              <option value="">全ての商品</option>
+              <% products.forEach(p => { %>
+                <option value="<%= p._id %>" <%= query.product == p._id.toString() ? 'selected' : '' %>><%= p.name %></option>
+              <% }) %>
+            </select>
+            <button type="submit" class="btn btn-primary">検索</button>
+            <a href="/history" class="btn btn-secondary">リセット</a>
+          </form>
+        </div>
+
+        <div class="card">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>日時</th>
+                <th>ユーザー</th>
+                <th>ユーザーID</th>
+                <th>商品名</th>
+                <th>配布トークン</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% histories.forEach(h => { %>
+                <tr>
+                  <td><%= new Date(h.wonAt).toLocaleString('ja-JP') %></td>
+                  <td><%= h.username %></td>
+                  <td class="font-mono text-sm"><%= h.userId %></td>
+                  <td><%= h.productName %></td>
+                  <td class="font-mono text-sm"><%= h.tokenContent %></td>
+                </tr>
+              <% }) %>
+              <% if(histories.length === 0) { %>
+                <tr>
+                  <td colspan="5" class="text-center">履歴がありません</td>
+                </tr>
+              <% } %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+  <script src="https://unpkg.com/feather-icons"></script>
+  <script>feather.replace();</script>
+</body>
+</html>

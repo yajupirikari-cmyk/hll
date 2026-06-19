@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>Products</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div class="app-container">
+    <%- include('partials/sidebar') %>
+    
+    <main class="main-content">
+      <header class="topbar">
+        <h2>Products</h2>
+      </header>
+
+      <div class="content-body">
+        <div class="card mb-20">
+          <h3>新規商品登録</h3>
+          <form action="/products" method="POST" class="form-inline">
+            <input type="text" name="name" class="form-control" placeholder="商品名" required>
+            <button type="submit" class="btn btn-primary">登録</button>
+          </form>
+        </div>
+
+        <div class="card">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>商品名</th>
+                <th>在庫数</th>
+                <th>登録日時</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% products.forEach(product => { %>
+                <tr>
+                  <td><%= product.name %></td>
+                  <td><%= product.stockCount %></td>
+                  <td><%= new Date(product.createdAt).toLocaleString('ja-JP') %></td>
+                  <td>
+                    <div class="action-buttons">
+                      <a href="/products/<%= product._id %>" class="btn btn-sm btn-secondary">管理</a>
+                      <form action="/products/<%= product._id %>/delete" method="POST" onsubmit="return confirm('本当に削除しますか？関連する在庫も全て削除されます。');" style="display:inline;">
+                        <button type="submit" class="btn btn-sm btn-danger">削除</button>
+                      </form>
+                    </div>
+                  </td>
+                </tr>
+              <% }) %>
+              <% if(products.length === 0) { %>
+                <tr>
+                  <td colspan="4" class="text-center">商品が登録されていません</td>
+                </tr>
+              <% } %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+  <script src="https://unpkg.com/feather-icons"></script>
+  <script>feather.replace();</script>
+</body>
+</html>
