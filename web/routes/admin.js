@@ -20,7 +20,19 @@ const serverId = process.env.TARGET_SERVER_ID;
 // ダッシュボードトップ
 router.get('/', async (req, res) => {
   const productsCount = await Product.countDocuments({ serverId });
-  const stockCount = await Stock.countDocuments({ serverId, isUsed: false });
+  
+  // 有効な総在庫数の計算
+  const products = await Product.find({ serverId });
+  let stockCount = 0;
+  for (const p of products) {
+    let stockQuery = { productId: p._id, isUsed: false };
+    if (p.expiresInHours) {
+      const expirationDate = new Date(Date.now() - p.expiresInHours * 60 * 60 * 1000);
+      stockQuery.createdAt = { $gt: expirationDate };
+    }
+    stockCount += await Stock.countDocuments(stockQuery);
+  }
+  
   const historyCount = await WinHistory.countDocuments({ serverId });
   
   res.render('dashboard', { 
@@ -37,7 +49,14 @@ router.get('/products', async (req, res) => {
   
   // 各商品の残り在庫数を取得
   const productsWithStock = await Promise.all(products.map(async p => {
-    const stockCount = await Stock.countDocuments({ productId: p._id, isUsed: false });
+    let stockQuery = { productId: p._id, isUsed: false };
+    
+    if (p.expiresInHours) {
+      const expirationDate = new Date(Date.now() - p.expiresInHours * 60 * 60 * 1000);
+      stockQuery.createdAt = { $gt: expirationDate };
+    }
+
+    const stockCount = await Stock.countDocuments(stockQuery);
     return { ...p.toObject(), stockCount };
   }));
 
@@ -46,10 +65,15 @@ router.get('/products', async (req, res) => {
 
 router.post('/products', async (req, res) => {
   try {
-    const { name } = req.body;
+    const { name, expiresInHours } = req.body;
     if (!name || name.trim() === '') return res.status(400).send('商品名は必須です');
 
-    await Product.create({ serverId, name: name.trim() });
+    const productData = { serverId, name: name.trim() };
+    if (expiresInHours && !isNaN(parseInt(expiresInHours))) {
+      productData.expiresInHours = parseInt(expiresInHours);
+    }
+
+    await Product.create(productData);
     res.redirect('/products');
   } catch (error) {
     if (error.code === 11000) {

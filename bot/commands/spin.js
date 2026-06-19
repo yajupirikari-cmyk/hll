@@ -97,7 +97,12 @@ module.exports = {
     }
 
     // 6. 当落判定
-    const availableStockCount = await Stock.countDocuments({ productId: product._id, isUsed: false });
+    let stockQuery = { productId: product._id, isUsed: false };
+    if (product.expiresInHours) {
+      const expirationDate = new Date(Date.now() - product.expiresInHours * 60 * 60 * 1000);
+      stockQuery.createdAt = { $gt: expirationDate };
+    }
+    const availableStockCount = await Stock.countDocuments(stockQuery);
     
     let isWin = false;
     if (availableStockCount > 0) {
@@ -116,9 +121,9 @@ module.exports = {
     }
 
     // 7. 当選時の処理
-    // アトミックに1件取得して使用済みに更新
+    // アトミックに1件取得して使用済みに更新 (期限内の条件を適用)
     const tokenDoc = await Stock.findOneAndUpdate(
-      { productId: product._id, isUsed: false },
+      stockQuery,
       { $set: { isUsed: true, usedBy: userId, usedAt: now } },
       { new: true }
     );
@@ -130,8 +135,20 @@ module.exports = {
       return;
     }
 
+    // 残り時間の計算
+    let timeLimitMsg = '';
+    if (product.expiresInHours) {
+      const expiresAt = new Date(tokenDoc.createdAt.getTime() + product.expiresInHours * 60 * 60 * 1000);
+      const remainingMs = expiresAt - now;
+      if (remainingMs > 0) {
+        const remainingHours = Math.floor(remainingMs / (1000 * 60 * 60));
+        const remainingMinutes = Math.floor((remainingMs % (1000 * 60 * 60)) / (1000 * 60));
+        timeLimitMsg = `\nこのキーの有効期限はあと【約 ${remainingHours}時間 ${remainingMinutes}分】です。期限内にご利用ください。\n`;
+      }
+    }
+
     // DM送信
-    const dmContent = `商品「${product.name}」に当選しました！\n\nトークン(コード):\n${tokenDoc.content}\n\nこのトークンは、動作しない場合があります。ご了承ください。\n不具合がある場合は、管理者(<@1486923873004945509>)までご連絡ください。`;
+    const dmContent = `商品「${product.name}」に当選しました！\n\nトークン(コード):\n${tokenDoc.content}\n${timeLimitMsg}\nこのトークンは、動作しない場合があります。ご了承ください。\n不具合がある場合は、管理者(<@1486923873004945509>)までご連絡ください。`;
     
     let dmSuccess = false;
     try {
